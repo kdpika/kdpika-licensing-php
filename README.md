@@ -1,0 +1,150 @@
+# KDPika Licensing PHP SDK
+
+Official PHP client for license activation, signed validation, controlled offline
+access, feature checks and deactivation. **PHP 8.2+**, SDK **1.0.1**.
+
+[Documentation](https://licensing.kdpika.com/docs/v1/sdks/php) ·
+[GitHub source](https://github.com/kdpika/kdpika-licensing-php) ·
+[Download SDK ZIP](https://github.com/kdpika/kdpika-licensing-php/releases/download/v1.0.1/kdpika-php-sdk-1.0.1.zip)
+
+## Install from the source ZIP
+
+Download [kdpika-php-sdk-1.0.1.zip from KDPika](https://licensing.kdpika.com/docs/downloads/kdpika-php-sdk-1.0.1.zip)
+or the identical versioned asset from GitHub Releases. Verify its SHA-256 against
+the [download table](https://licensing.kdpika.com/docs/v1/sdks/overview#download-and-verify),
+extract it beside your application, then install dependencies:
+
+```sh
+composer install --working-dir ./kdpika-php-sdk --no-interaction --no-plugins --no-scripts --prefer-dist
+```
+
+Or clone this repository (select a reviewed tag/commit before distribution):
+
+```sh
+git clone https://github.com/kdpika/kdpika-licensing-php.git kdpika-php-sdk
+composer install --working-dir ./kdpika-php-sdk --no-interaction --no-plugins --no-scripts --prefer-dist
+```
+
+Composer package identity is `kdpika/license-sdk`; namespace is
+`KDPika\\LicenseSdk`. **No Packagist publication is claimed.**
+Dependencies need PHP cURL/JSON and native Sodium or Composer's declared
+`paragonie/sodium_compat` fallback. Run the SDK in a trusted PHP backend or CLI,
+never in a public browser.
+
+## Quickstart
+
+Create a product and Sandbox license in your workspace. Set your public App ID,
+license key and matching buyer email privately. Choose a private persistent
+absolute state directory outside the public web root. The example below lives
+beside the extracted SDK directory:
+
+```php
+<?php
+declare(strict_types=1);
+
+require __DIR__ . '/kdpika-php-sdk/vendor/autoload.php';
+
+use KDPika\\LicenseSdk\\LicenseClient;
+
+$client = new LicenseClient(
+    product: (string) getenv('KDP_APP_ID'),
+    environment: 'SANDBOX',
+    applicationName: 'Your Application',
+    applicationVersion: '1.0.0',
+    storageDir: (string) getenv('KDP_STATE_DIR'),
+);
+
+$result = $client->check();
+if (!$result->valid && $result->errorCode === 'NOT_ACTIVATED') {
+    // In your app, obtain these privately from the activation form.
+    $result = $client->activate(
+        (string) getenv('KDP_LICENSE_KEY'),
+        getenv('KDP_CUSTOMER_EMAIL') ?: null,
+    );
+}
+if (!$result->valid || !$result->signatureValid) {
+    echo 'Please check your license or contact support.';
+    exit(1);
+}
+if ($result->feature('pdf_export')) {
+    // Enable only the feature included in this verified license.
+}
+```
+
+Feature names come from your product's plan. The email must match when supplied.
+Never put a developer management API key in distributed customer software. The
+customer key is used for activation; the private activation token is stored by
+the client. Do not print tokens, raw responses, keys or private state in logs.
+
+## Lifecycle
+
+- `activate(key, email)`: activate online and verify the signed decision.
+- `check()`: use a current verified cache, otherwise validate.
+- `validate()`: request a check; genuine transport failure may use signed grace.
+- `deactivate()`: release the installation and clear stored access after confirmation.
+- `activated()`: token presence only, not current approval.
+- `result->feature(name)`: use only after checking validity and signature.
+
+A successful deactivation acknowledges a release, **not permission to run paid
+features**, even where the operation result reports valid. Keep the installation
+identity/state directory stable across restarts and application updates.
+
+## Security and compatibility boundaries
+
+- SDK 1.0.1 verifies the server's exact signed `payload_json` bytes and checks
+  product, environment, installation binding, status and time/offline boundaries.
+  Legacy envelopes retain the canonicalization fallback; never disable signatures.
+- Feature helpers fail closed for invalid/unsigned/outdated access; keep your
+  explicit validity/signature gate and type/range checks for numeric quotas.
+- Server refusals must not become offline grants. Offline apps cannot learn new
+  revocations until they reconnect; offline access is never unlimited.
+- Files are permission-protected, not automatic Keychain/DPAPI/Secret Service
+  storage. Assess permissions, process concurrency and OS protection for your app.
+- Historical signing-key overlap is not supplied. Coordinate pinned-key rotation.
+- PHP 8.5 may emit a `curl_close` deprecation notice; do not expose PHP diagnostics
+  publicly or suppress a failed license decision.
+- A machine owner can patch local software. Protect valuable online operations
+  on an authenticated backend; no anti-tampering certification is claimed.
+- Your store handles your software buyers' payments. This SDK does not create
+  subscriptions, process card payments or replace your application's own auth.
+
+## Examples and tests
+
+See `examples/session.php` and `examples/members.php`, plus their layout
+instructions. Session examples use private KDP_* configuration and Sandbox.
+
+From the SDK directory, after Composer installation:
+
+```sh
+php tests/standalone.php
+```
+
+This package-local suite uses synthetic signing keys/transports, not production
+accounts. The legacy `tests/run.php` retains its original repository-relative
+autoload assumption and is not the standalone entry. More extensive PHP-generated
+numeric/Unicode/cache and isolated Sandbox evidence is documented in the platform
+guide; a CI build is not certification of every deployment environment.
+
+The versioned download assets are immutable tested snapshots. GitHub README,
+Composer metadata and CI documentation can improve without changing their bytes.
+The SDK runtime source is the same 1.0.1 implementation; no new runtime behavior
+or universal cross-language parity is implied by this repository publication.
+
+## SDK repositories and ZIP downloads
+
+| Language | GitHub repository | ZIP from documentation | ZIP from GitHub Releases |
+| --- | --- | --- | --- |
+| Python | [kdpika-licensing-python](https://github.com/kdpika/kdpika-licensing-python) | [Python 1.1.5 ZIP](https://licensing.kdpika.com/docs/downloads/kdpika-python-sdk-1.1.5.zip) | [Python 1.1.5 ZIP](https://github.com/kdpika/kdpika-licensing-python/releases/download/v1.1.5/kdpika-python-sdk-1.1.5.zip) |
+| Rust | [kdpika-licensing-rust](https://github.com/kdpika/kdpika-licensing-rust) | [Rust 0.1.0 ZIP](https://licensing.kdpika.com/docs/downloads/kdpika-rust-sdk-0.1.0.zip) | [Rust 0.1.0 ZIP](https://github.com/kdpika/kdpika-licensing-rust/releases/download/v0.1.0/kdpika-rust-sdk-0.1.0.zip) |
+| PHP | [kdpika-licensing-php](https://github.com/kdpika/kdpika-licensing-php) | [PHP 1.0.1 ZIP](https://licensing.kdpika.com/docs/downloads/kdpika-php-sdk-1.0.1.zip) | [PHP 1.0.1 ZIP](https://github.com/kdpika/kdpika-licensing-php/releases/download/v1.0.1/kdpika-php-sdk-1.0.1.zip) |
+
+Python is also on [PyPI](https://pypi.org/project/kdpika-licensing/); Rust is on
+[crates.io](https://crates.io/crates/kdpika-licensing). PHP is a source distribution.
+
+## License and support
+
+This PHP package **retains its existing proprietary license**, unlike the
+MIT-licensed Python/Rust SDKs. Public source access does not convert its license
+or grant unrestricted redistribution. See LICENSE and contact
+[hi@kdpika.com](mailto:hi@kdpika.com) for applicable integration/distribution terms.
+KDPika's SaaS backend is not included.

@@ -1,0 +1,8 @@
+/vendor/
+/.initial-source/
+/.env
+/.env.*
+/.state/
+/.cache/
+/.phpunit.cache/
+.DS_Store
