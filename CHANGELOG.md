@@ -1,5 +1,14 @@
 # Package observations and documentation changes
 
+## Unreleased — Phase B/C/D parity
+
+- Required native hardware hashing and signed strict/fuzzy binding; fail closed,
+  no browser fallback or raw-serial persistence.
+- Floating checkout/heartbeat/checkin/close, signed lease gating and typed full-seat
+  error. PHP renewal is cooperative through check/tick, not a background thread.
+- Online-only consume/getBalance, readonly signed receipts, idempotency replay and
+  typed insufficient-credit errors. No server, signature or dependency changes.
+
 ## 1.0.1 — 2026-10-21
 
 - Guard features with validity, signature and signed deadlines; invalid results ignore enabling defaults. Positive numeric flags match Python semantics.

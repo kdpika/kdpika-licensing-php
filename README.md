@@ -1,5 +1,44 @@
 # KDPika Licensing PHP SDK
 
+## Unreleased source — Phase B/C/D parity
+
+Requires 64-bit PHP 8.2+ and the matching server contract. Windows/macOS/Linux
+collect product-salted hardware hashes; raw serials are not stored/transmitted.
+Activate/validate send the required fingerprint and installation identity, and
+signed strict/fuzzy device binding gates online/cache/offline access. Missing
+hardware denies `HARDWARE_UNAVAILABLE`; VM detection is only a hint. The optional
+`fingerprintProvider` constructor callback is for a trusted native adapter/tests,
+never an end-user-supplied device ID. Browser/JS-in-browser fallback: unsupported.
+
+Floating activation automatically checks out a seat. Use `checkout()`, `heartbeat()`,
+`checkin()` or `close()`; explicit full checkout throws `AllSeatsInUseException`
+with `errorCode=ALL_SEATS_IN_USE`. Lease expiry and the private session-token hash
+are checked on cached/offline and retained feature decisions. PHP has **no background
+thread**: `check()` renews when due, and long-running workers must call `tick()`
+frequently or `heartbeat()` at the signed interval. A blocking job cannot renew
+itself; use a host worker/timer if needed. Explicit close is recommended; destruction
+attempts checkin but abrupt process termination relies on server lease expiry.
+
+```php
+try {
+    $receipt = $client->consume(1, 'durable_export_job_123');
+    // Run this export once using the SAME job ID; replay is not a new export.
+} catch (\KDPika\LicenseSdk\InsufficientCreditsException $e) {
+    showTopupMessage($e->balance);
+}
+$balance = $client->getBalance(); // signed, online, zero is allowed
+```
+
+The readonly receipt exposes `transactionId`, `consumed`, `balance`, `replayed`.
+A replay balance is historical; getBalance fetches current balance. Persist/reuse
+the job key after an uncertain outcome; no automatic consumption retry occurs.
+The last successful charge may leave zero and still permits that operation.
+Normal feature checks do not charge credits. Metered cached/offline access denies
+`METERED_ONLINE_REQUIRED`. Operations share a process-safe local file lock; use
+private local storage outside the web root, not NFS. No dependencies, package
+publication, server changes or Ed25519 changes are included in this source update.
+
+
 Official PHP client for license activation, signed validation, controlled offline
 access, feature checks and deactivation. **PHP 8.2+**, SDK **1.0.1**.
 

@@ -16,6 +16,7 @@ final readonly class LicenseResult
         public bool $signatureValid = false,
         public string $storageSecurity = 'permission-protected-file',
         private mixed $clock = null,
+        private mixed $seatGuard = null,
     ) {}
 
     private function allowed(): bool
@@ -23,6 +24,8 @@ final readonly class LicenseResult
         if(!$this->valid||!$this->signatureValid||($this->payload['status']??'')!=='active'||!array_key_exists('expires_at',$this->payload))return false;
         try{
             $p=$this->payload;$now=$this->clock?($this->clock)():new \DateTimeImmutable('now',new \DateTimeZone('UTC'));
+            if(!LicensePolicy::credits($p)||($p['metered']&&($this->source!=='online'||$p['credit_balance']===0)))return false;
+            if(($p['floating']??null)!==null){if(!$this->seatGuard||!($this->seatGuard)($p))return false;}elseif(!LicensePolicy::lease($p,null,$now))return false;
             foreach(['server_time','next_validation_at','offline_grace_until']as$key)if(!is_string($p[$key]??null))return false;
             $server=new \DateTimeImmutable($p['server_time']);$next=new \DateTimeImmutable($p['next_validation_at']);$grace=new \DateTimeImmutable($p['offline_grace_until']);
             $expiry=($p['expires_at']??null)===null?null:new \DateTimeImmutable($p['expires_at']);
