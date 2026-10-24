@@ -5,7 +5,21 @@ access, feature checks and deactivation. **PHP 8.2+**, SDK **1.0.1**.
 
 [Documentation](https://licensing.kdpika.com/docs/v1/sdks/php) ·
 [GitHub source](https://github.com/kdpika/kdpika-licensing-php) ·
-[Download SDK ZIP](https://github.com/kdpika/kdpika-licensing-php/releases/download/v1.0.1/kdpika-php-sdk-1.0.1.zip)
+[Download SDK ZIP](https://github.com/kdpika/kdpika-licensing-php/releases/download/v1.0.1/kdpika-php-sdk-1.0.1.zip) ·
+[Packagist package](https://packagist.org/packages/kdpika/license-sdk)
+
+## Install with Composer
+
+From your application's directory, install the published stable package:
+
+```sh
+composer require "kdpika/license-sdk:^1.0.1" --no-interaction --no-plugins --no-scripts
+```
+
+Load `vendor/autoload.php` in your application and use
+`KDPika\LicenseSdk\LicenseClient`. Commit your application's `composer.lock` to
+retain its resolved dependency versions. You do not need to download a ZIP or
+add a custom repository to use the Packagist package.
 
 ## Install from the source ZIP
 
@@ -26,7 +40,9 @@ composer install --working-dir ./kdpika-php-sdk --no-interaction --no-plugins --
 ```
 
 Composer package identity is `kdpika/license-sdk`; namespace is
-`KDPika\\LicenseSdk`. **No Packagist publication is claimed.**
+`KDPika\LicenseSdk`. It is published on
+[Packagist](https://packagist.org/packages/kdpika/license-sdk) as version 1.0.1;
+Composer and source ZIP installation are alternatives, not two required steps.
 Dependencies need PHP cURL/JSON and native Sodium or Composer's declared
 `paragonie/sodium_compat` fallback. Run the SDK in a trusted PHP backend or CLI,
 never in a public browser.
@@ -35,16 +51,16 @@ never in a public browser.
 
 Create a product and Sandbox license in your workspace. Set your public App ID,
 license key and matching buyer email privately. Choose a private persistent
-absolute state directory outside the public web root. The example below lives
-beside the extracted SDK directory:
+absolute state directory outside the public web root. The example below uses
+the Composer installation in your application's directory:
 
 ```php
 <?php
 declare(strict_types=1);
 
-require __DIR__ . '/kdpika-php-sdk/vendor/autoload.php';
+require __DIR__ . '/vendor/autoload.php';
 
-use KDPika\\LicenseSdk\\LicenseClient;
+use KDPika\LicenseSdk\LicenseClient;
 
 $client = new LicenseClient(
     product: (string) getenv('KDP_APP_ID'),
@@ -72,6 +88,8 @@ if ($result->feature('pdf_export')) {
 ```
 
 Feature names come from your product's plan. The email must match when supplied.
+If you installed the source ZIP beside the example instead, change the autoload
+line to `require __DIR__ . '/kdpika-php-sdk/vendor/autoload.php';`.
 Never put a developer management API key in distributed customer software. The
 customer key is used for activation; the private activation token is stored by
 the client. Do not print tokens, raw responses, keys or private state in logs.
@@ -135,11 +153,12 @@ or universal cross-language parity is implied by this repository publication.
 | Language | GitHub repository | ZIP from documentation | ZIP from GitHub Releases |
 | --- | --- | --- | --- |
 | Python | [kdpika-licensing-python](https://github.com/kdpika/kdpika-licensing-python) | [Python 1.1.5 ZIP](https://licensing.kdpika.com/docs/downloads/kdpika-python-sdk-1.1.5.zip) | [Python 1.1.5 ZIP](https://github.com/kdpika/kdpika-licensing-python/releases/download/v1.1.5/kdpika-python-sdk-1.1.5.zip) |
-| Rust | [kdpika-licensing-rust](https://github.com/kdpika/kdpika-licensing-rust) | [Rust 0.1.0 ZIP](https://licensing.kdpika.com/docs/downloads/kdpika-rust-sdk-0.1.0.zip) | [Rust 0.1.0 ZIP](https://github.com/kdpika/kdpika-licensing-rust/releases/download/v0.1.0/kdpika-rust-sdk-0.1.0.zip) |
+| Rust | [kdpika-licensing-rust](https://github.com/kdpika/kdpika-licensing-rust) | [Rust 0.1.1 ZIP](https://licensing.kdpika.com/docs/downloads/kdpika-rust-sdk-0.1.1.zip) | [Rust 0.1.1 ZIP](https://github.com/kdpika/kdpika-licensing-rust/releases/download/v0.1.1/kdpika-rust-sdk-0.1.1.zip) |
 | PHP | [kdpika-licensing-php](https://github.com/kdpika/kdpika-licensing-php) | [PHP 1.0.1 ZIP](https://licensing.kdpika.com/docs/downloads/kdpika-php-sdk-1.0.1.zip) | [PHP 1.0.1 ZIP](https://github.com/kdpika/kdpika-licensing-php/releases/download/v1.0.1/kdpika-php-sdk-1.0.1.zip) |
 
 Python is also on [PyPI](https://pypi.org/project/kdpika-licensing/); Rust is on
-[crates.io](https://crates.io/crates/kdpika-licensing). PHP is a source distribution.
+[crates.io](https://crates.io/crates/kdpika-licensing); PHP is on
+[Packagist](https://packagist.org/packages/kdpika/license-sdk).
 
 ## License and support
 
