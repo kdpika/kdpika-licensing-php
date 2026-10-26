@@ -2,7 +2,7 @@
   "name": "kdpika/license-sdk",
   "description": "Official KDPika Licensing SDK for PHP",
   "type": "library",
-  "license": "proprietary",
+  "license": "MIT",
   "require": {
     "php": "^8.2",
     "ext-curl": "*",
@@ -21,5 +21,9 @@
       "/.github/",
       "/vendor/"
     ]
+  },
+  "support": {
+    "issues": "https://github.com/kdpika/kdpika-licensing-php/issues",
+    "source": "https://github.com/kdpika/kdpika-licensing-php"
   }
 }

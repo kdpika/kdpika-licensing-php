@@ -1,8 +1,8 @@
 # KDPika Licensing PHP SDK
 
-Official SDK **2.0.0** for the current KDPika API contract.
+Official SDK **2.0.1** for the current KDPika API contract.
 
-[Documentation](https://licensing.kdpika.com/docs/v1/sdks/php) · [Download SDK ZIP](https://licensing.kdpika.com/docs/downloads/kdpika-php-sdk-2.0.0.zip) · [GitHub source](https://github.com/kdpika/kdpika-licensing-php)
+[Documentation](https://licensing.kdpika.com/docs/v1/sdks/php) · [Download SDK ZIP](https://licensing.kdpika.com/docs/downloads/kdpika-php-sdk-2.0.1.zip) · [GitHub source](https://github.com/kdpika/kdpika-licensing-php)
 
 ## Supported licensing capabilities
 
@@ -64,7 +64,7 @@ publication, server changes or Ed25519 changes are included in this source updat
 Maintained PHP client (source requires PHP 8.2+) for activation, signed validation, controlled offline grace, feature access, and deactivation.
 
 ```bash
-tar -xzf kdpika-php-sdk-2.0.0.tar.gz
+tar -xzf kdpika-php-sdk-2.0.1.tar.gz
 composer install --working-dir ./kdpika-php-sdk
 ```
 
@@ -84,7 +84,7 @@ Never place a developer API key in distributed code. PHP must provide cURL; Ed25
 
 ## Release limitations and trust boundary
 
-Version 2.0.0 requires PHP8.2+ in Composer, matching readonly syntax. It verifies exact `payload_json` signed bytes and guards feature access with validity, signature and deadlines. Keep an explicit validity/signature gate. Older envelopes use the canonical fallback; never bypass verification. Historical signing-key overlap is not implemented.
+Version 2.0.1 requires PHP8.2+ in Composer, matching readonly syntax. It verifies exact `payload_json` signed bytes and guards feature access with validity, signature and deadlines. Keep an explicit validity/signature gate. Older envelopes use the canonical fallback; never bypass verification. Historical signing-key overlap is not implemented.
 
 Your own store handles software-buyer payments. KDPika Licensing bills only your developer platform subscription. Package/import names remain unchanged for compatibility. No registry publication is implied by this local-download README. The short host-application excerpts are not a complete application; the upcoming documentation phases must supply executed, standalone samples before treating them as a quickstart.
 
@@ -107,7 +107,7 @@ current access grant. Require valid and signature verification before features.
 
 ### Current release limitations
 
-Python/PHP/JavaScript/C# 2.0.0 and Rust 0.2.0 include the current signed-response
+Python/PHP/JavaScript/C# 2.0.1 and Rust 0.2.0 include the current signed-response
 and feature-guard protections. PHP requires8.2+; PHP8.5 can emit curl_close
 deprecation. Old1.0.0 caches may require an online refresh. Never disable
 Ed25519, strip signed fields or extend offline permission.
