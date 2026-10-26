@@ -2,13 +2,6 @@
   "name": "kdpika/license-sdk",
   "description": "Official KDPika Licensing SDK for PHP",
   "type": "library",
-  "homepage": "https://licensing.kdpika.com/docs/v1/sdks/php",
-  "keywords": ["licensing", "license", "sdk", "ed25519"],
-  "support": {
-    "source": "https://github.com/kdpika/kdpika-licensing-php",
-    "issues": "https://github.com/kdpika/kdpika-licensing-php/issues",
-    "email": "hi@kdpika.com"
-  },
   "license": "proprietary",
   "require": {
     "php": "^8.2",
@@ -16,5 +9,17 @@
     "ext-json": "*",
     "paragonie/sodium_compat": "^2.4"
   },
-  "autoload": {"psr-4": {"KDPika\\LicenseSdk\\": "src/"}}
+  "autoload": {
+    "psr-4": {
+      "KDPika\\LicenseSdk\\": "src/"
+    }
+  },
+  "homepage": "https://licensing.kdpika.com/docs/v1/sdks/php",
+  "archive": {
+    "exclude": [
+      "/tests/",
+      "/.github/",
+      "/vendor/"
+    ]
+  }
 }
