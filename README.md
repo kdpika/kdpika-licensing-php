@@ -1,8 +1,31 @@
 # KDPika Licensing PHP SDK
 
-Official SDK **2.0.1** for the current KDPika API contract.
+## Desktop / Web plan controls — 2.1.0
 
-[Documentation](https://licensing.kdpika.com/docs/v1/sdks/php) · [Download SDK ZIP](https://licensing.kdpika.com/docs/downloads/kdpika-php-sdk-2.0.1.zip) · [GitHub source](https://github.com/kdpika/kdpika-licensing-php)
+This source adds Business-only per-software-plan app access: `desktop`, `web`, or `both`. Starter and Pro automatically allow both under the same App ID and cannot create app-specific restrictions. It applies equally to subscriptions, one-time purchases and lifetime access. Devices/seats/credits belong to the same license; choosing both does not double its limits.
+
+Configure the host application, not a customer-editable field:
+
+```
+new LicenseClient(product: 'YOUR_APP_ID', applicationType: 'web', storageDir: '/private/web-license')
+```
+
+Default: web. Configure the other app with the same App ID and key, its own context and private state folder. SDK storage namespaces include the context. All activation/validation/seat/credit requests send `X-Application-Type`, and the SDK checks signed `application_access` plus `application_type` on network and cached results. A scope-restricted license cannot activate without declaring a context. Errors: APPLICATION_NOT_ALLOWED, APPLICATION_TYPE_REQUIRED, APPLICATION_TYPE_MISMATCH, INVALID_APPLICATION_TYPE. Releasing a machine/seat remains possible after a restriction change.
+
+Context is a declaration by trusted application code, not browser/hardware attestation. A user who controls executable code can modify it; valuable online operations need server-side authorization too. Offline clients learn changed policies only on reconnect and must obey the old signed deadline until then. Browser/WASM hardware fallback remains unsupported.
+
+[Download the source ZIP](https://licensing.kdpika.com/docs/downloads/kdpika-php-sdk-2.1.0.zip) · [Desktop / Web setup and migration](https://licensing.kdpika.com/docs/v1/licensing/application-access)
+
+## Install this release
+
+```sh
+composer require kdpika/license-sdk:^2.1
+```
+
+
+Official SDK **2.1.0** for signed licensing, hardware binding, floating seats, metered credits and Desktop / Web access controls.
+
+[Documentation](https://licensing.kdpika.com/docs/v1/sdks/php) · [Download SDK ZIP](https://licensing.kdpika.com/docs/downloads/kdpika-php-sdk-2.1.0.zip) · [GitHub source](https://github.com/kdpika/kdpika-licensing-php)
 
 ## Supported licensing capabilities
 
@@ -19,7 +42,7 @@ Advanced matching, floating seats, credits and portal availability depend on you
 ## Install
 
 ```sh
-composer require kdpika/license-sdk:^2.0
+composer require kdpika/license-sdk:^2.1
 ```
 
 
@@ -64,7 +87,7 @@ publication, server changes or Ed25519 changes are included in this source updat
 Maintained PHP client (source requires PHP 8.2+) for activation, signed validation, controlled offline grace, feature access, and deactivation.
 
 ```bash
-tar -xzf kdpika-php-sdk-2.0.1.tar.gz
+tar -xzf kdpika-php-sdk-2.1.0.tar.gz
 composer install --working-dir ./kdpika-php-sdk
 ```
 
@@ -84,7 +107,7 @@ Never place a developer API key in distributed code. PHP must provide cURL; Ed25
 
 ## Release limitations and trust boundary
 
-Version 2.0.1 requires PHP8.2+ in Composer, matching readonly syntax. It verifies exact `payload_json` signed bytes and guards feature access with validity, signature and deadlines. Keep an explicit validity/signature gate. Older envelopes use the canonical fallback; never bypass verification. Historical signing-key overlap is not implemented.
+Version 2.1.0 requires PHP8.2+ in Composer, matching readonly syntax. It verifies exact `payload_json` signed bytes and guards feature access with validity, signature and deadlines. Keep an explicit validity/signature gate. Older envelopes use the canonical fallback; never bypass verification. Historical signing-key overlap is not implemented.
 
 Your own store handles software-buyer payments. KDPika Licensing bills only your developer platform subscription. Package/import names remain unchanged for compatibility. No registry publication is implied by this local-download README. The short host-application excerpts are not a complete application; the upcoming documentation phases must supply executed, standalone samples before treating them as a quickstart.
 
@@ -107,7 +130,7 @@ current access grant. Require valid and signature verification before features.
 
 ### Current release limitations
 
-Python/PHP/JavaScript/C# 2.0.1 and Rust 0.2.0 include the current signed-response
+Python/PHP/JavaScript/C# 2.1.0 and Rust 0.2.0 include the current signed-response
 and feature-guard protections. PHP requires8.2+; PHP8.5 can emit curl_close
 deprecation. Old1.0.0 caches may require an online refresh. Never disable
 Ed25519, strip signed fields or extend offline permission.
@@ -127,3 +150,7 @@ Run `composer install --no-plugins --no-scripts`, then `php tests/standalone.php
 
 See LICENSE for existing license-information boundaries and CHANGELOG.md for verified observations; neither implies an invented public registry release.
 <!-- P7-QUALITY:END -->
+
+## Web-request lifecycle (current source addition)
+
+The constructor accepts `releaseSessionOnDestruct: false` for a trusted web app that deliberately keeps a signed seat across PHP requests. Default remains true. Keep the same private state folder, send authenticated heartbeats at the signed interval, explicitly checkin on close, and require `check()` before every protected operation. Expiry still stops access if the browser disappears. This optional source addition is not yet in the published 2.1.0 package; no signature checks are bypassed.

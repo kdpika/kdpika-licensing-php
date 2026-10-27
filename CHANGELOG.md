@@ -1,3 +1,8 @@
+## 2.1.0 — application access source update (not registry-published)
+
+- Add desktop/web application context, context-isolated installation state, request header and signed network/cache enforcement.
+- Default remains web for PHP and desktop for native/Node SDKs. No changes to Ed25519 signing, credit atomicity or seat limits.
+
 # Current release: 2.0.1
 
 - Required signed hardware binding, floating checkout/heartbeat/checkin and online idempotent usage credits.
@@ -47,3 +52,7 @@ date, a published registry release or an invented earlier-version history.
 
 Future entries must identify the exact version, verified changes, compatibility
 impact and tests. API v1 and SDK package versions are independent.
+
+## Unreleased — web-request lifecycle
+
+- Optional releaseSessionOnDestruct constructor flag (default true) lets a server web app retain a signed floating session across requests. Explicit close/checkin and all signed expiry guards remain unchanged.

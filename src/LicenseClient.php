@@ -32,7 +32,10 @@ final class LicenseClient
         ?callable $transport = null,
         ?callable $clock = null,
         ?callable $fingerprintProvider = null,
+        private readonly bool $releaseSessionOnDestruct = true,
+        private readonly string $applicationType = 'web',
     ) {
+        if(!in_array($applicationType,['desktop','web'],true))throw new RuntimeException('Application type must be desktop or web.');
         if(PHP_INT_SIZE<8)throw new RuntimeException('This SDK requires 64-bit PHP for exact credit amounts.');
         if (trim($product) === '') throw new RuntimeException('A Public App ID is required.');
         $baseUrl = rtrim(trim($baseUrl), '/');
@@ -46,7 +49,7 @@ final class LicenseClient
         $this->transport = $transport;
         $this->clock = $clock;
         $this->fingerprintProvider=$fingerprintProvider;
-        $namespace = substr(hash('sha256', strtolower($baseUrl) . '|' . $product . '|' . $this->environment), 0, 20);
+        $namespace = substr(hash('sha256', strtolower($baseUrl) . '|' . $product . '|' . $this->environment . '|' . $this->applicationType), 0, 20);
         $this->storageDir = rtrim($storageDir ?? $this->defaultStorageDir($applicationName), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $namespace;
         if (!is_dir($this->storageDir) && !mkdir($this->storageDir, 0700, true) && !is_dir($this->storageDir)) throw new RuntimeException('License storage could not be created.');
         @chmod($this->storageDir, 0700);
@@ -162,6 +165,7 @@ final class LicenseClient
         if (($signed['key_id'] ?? null) !== ($key['key_id'] ?? null)) throw new RuntimeException('The license signature key does not match the trusted key.');
         $canonical = $encoded??json_encode($this->sortRecursive($payload), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION | JSON_THROW_ON_ERROR);
         if (!sodium_crypto_sign_verify_detached($this->decode($signature), $canonical, $this->decode((string) $key['public_key']))) throw new RuntimeException('The license signature is invalid.');
+        if(!self::applicationAllowed($payload,$this->applicationType))return $this->error('APPLICATION_NOT_ALLOWED','This license does not include this type of app.',$source,$response,$payload,true);
         if (($payload['product_id'] ?? null) !== $this->product || strtoupper((string) ($payload['environment'] ?? '')) !== $this->environment) throw new RuntimeException('The signed license belongs to another product or environment.');
         if (($payload['device']['installation_hash'] ?? null) !== hash('sha256', $this->installationId)) throw new RuntimeException('The signed license belongs to another installation.');
         if(!HardwareFingerprint::matches($payload['device']['fingerprint']??null,$this->fingerprint()))return $this->error('FINGERPRINT_MISMATCH','This activation belongs to a different device.',$source,$response,$payload,true);
@@ -205,6 +209,7 @@ final class LicenseClient
 
     private function request(string $method, string $path, ?array $body, array $headers): array
     {
+        $headers['X-Application-Type']=$this->applicationType;
         if ($this->transport) return ($this->transport)($method, $path, $body, $headers);
         $curl = curl_init($this->baseUrl . $path);
         $headerLines = ['Accept: application/json', 'User-Agent: KDPika-PHP-SDK/1.0']; foreach ($headers as $name=>$value) $headerLines[]=$name.': '.$value;
@@ -216,6 +221,11 @@ final class LicenseClient
         return ['ok'=>$status>=200&&$status<300&&($decoded['success']??false)===true,'status'=>$status,'body'=>$decoded];
     }
 
+    public static function applicationAllowed(array $payload,string $type):bool
+    {
+        $scope=array_key_exists('application_access',$payload)?$payload['application_access']:(array_key_exists('application_access',$payload['features']??[])?$payload['features']['application_access']:'both');$bound=$payload['application_type']??null;
+        return in_array($type,['desktop','web'],true)&&in_array($scope,['both','desktop','web'],true)&&($scope==='both'||$scope===$type)&&($bound===null?$scope==='both':$bound===$type);
+    }
     private function responseError(array $response): LicenseResult { return $this->error((string)($response['body']['error']['code']??'HTTP_ERROR'),(string)($response['body']['error']['message']??'The licensing service rejected the request.'),'online',$response); }
     private function error(string $code,string $message,string $source,?array $response=null,array $payload=[],bool $signature=false): LicenseResult { return new LicenseResult(false,$source,$payload,$code,$message,$response['body']['request_id']??null,$signature); }
     private function now(): DateTimeImmutable { $value=$this->clock ? ($this->clock)() : new DateTimeImmutable('now',new DateTimeZone('UTC')); return $value instanceof DateTimeImmutable ? $value->setTimezone(new DateTimeZone('UTC')) : new DateTimeImmutable((string)$value,new DateTimeZone('UTC')); }
@@ -243,7 +253,7 @@ final class LicenseClient
     public function close():LicenseResult{return $this->checkin();}
     /** PHP has no background thread. Long-running loops call tick() frequently. */
     public function tick():?LicenseResult{return $this->synchronized(function():?LicenseResult{$s=$this->readJson('floating-session.json');return $this->sessionToken()&&($s['next_heartbeat_at']??0)<=$this->now()->getTimestamp()?$this->seatInner('heartbeat'):null;});}
-    public function __destruct(){if(isset($this->storageDir)&&$this->sessionToken()){try{$this->checkin();}catch(\Throwable){}}}
+    public function __destruct(){if($this->releaseSessionOnDestruct&&isset($this->storageDir)&&$this->sessionToken()){try{$this->checkin();}catch(\Throwable){}}}
     private function seatInner(string $action):LicenseResult
     {
         $token=$this->token();$session=$this->sessionToken();
