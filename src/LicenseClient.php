@@ -186,7 +186,6 @@ final class LicenseClient
         if(!LicensePolicy::lease($payload,$this->sessionToken(),$now))return $this->error('SESSION_EXPIRED','Your shared seat expired. Connect to reserve a seat again.',$source,$response,$payload,true);
         if(!LicensePolicy::credits($payload))return $this->error('INVALID_RESPONSE','The credit policy is unavailable.',$source,$response,$payload,true);
         if($payload['metered']&&$source!=='online')return $this->error('METERED_ONLINE_REQUIRED','Connect to check or use credits.',$source,$response,$payload,true);
-        if($payload['metered']&&$payload['credit_balance']===0)return $this->error('INSUFFICIENT_CREDITS','There are not enough credits. Contact the software publisher.',$source,$response,$payload,true);
         return new LicenseResult(true, $source, $payload, requestId: $response['body']['request_id'] ?? null, signatureValid: true, clock: fn()=>$this->now(),seatGuard:fn(array $p)=>LicensePolicy::lease($p,$this->sessionToken(),$this->now()));
     }
 
@@ -268,22 +267,44 @@ final class LicenseClient
         try{$signed=$response['body']['license']??[];$r=$this->verified($signed,'online',$response);}catch(\Throwable){$r=$this->error('SIGNATURE_INVALID','The shared seat could not be verified.','online',$response);}
         if($r->valid||$r->errorCode==='INSUFFICIENT_CREDITS'){$this->saveState($signed);$this->writeJson('floating-session.json',['session_token'=>$this->sessionToken(),'next_heartbeat_at'=>$this->now()->getTimestamp()+$r->payload['floating']['heartbeat_interval_seconds']]);}else{$this->remove('floating-session.json');$this->remove('signed-state.json');}return $r;
     }
+    public function creditPacks():array{return $this->creditRequest('packs',[]);}
+    public function creditHistory():array{return $this->creditRequest('history',[]);}
+    public function createCreditCheckout(string $packId):array{return $this->creditRequest('checkout',['pack_id'=>$packId]);}
+    public function redeemCredits(string $code,string $idempotencyKey):array
+    {
+        if(!preg_match('/\A[A-Za-z0-9_.:-]{8,190}\z/D',$idempotencyKey))throw new CreditOperationException('INVALID_REQUEST');
+        return $this->creditRequest('redeem',['code'=>$code,'idempotency_key'=>$idempotencyKey]);
+    }
+    private function creditRequest(string $operation,array $fields):array
+    {
+        return $this->synchronized(function()use($operation,$fields):array{
+            $token=$this->token();if(!$token)throw new CreditOperationException('NOT_ACTIVATED');
+            try{$response=$this->request('POST','/api/v1/credits/'.$operation,$fields+['fingerprint'=>$this->fingerprint(),'session_token'=>$this->sessionToken()],['Authorization'=>'Bearer '.$token,'X-Installation-ID'=>$this->installationId]);}catch(RuntimeException){throw new CreditOperationException('NETWORK_ERROR');}
+            if(!$response['ok'])throw new CreditOperationException($response['body']['error']['code']??'HTTP_ERROR');
+            $signed=$response['body']['license']??[];$r=$this->verified($signed,'online',$response);
+            if(!$r->valid||!$r->signatureValid)throw new CreditOperationException($r->errorCode??'SIGNATURE_INVALID');
+            $this->saveState($signed);$data=$response['body'];unset($data['license']);$data['balance']=$r->payload['credit_balance'];
+            if($operation==='redeem'){$receipt=$r->payload['credit_transaction']??[];$expected=hash('sha256','code:'.hash('sha256',$fields['idempotency_key']));if(($receipt['type']??'')!=='grant'||($receipt['idempotency_hash']??'')!==$expected||($receipt['id']??null)!==($data['transaction_id']??null))throw new CreditOperationException('SIGNATURE_INVALID');$data['added']=$receipt['amount'];$data['replayed']=$receipt['replayed'];}
+            return $data;
+        });
+    }
     public function getBalance():int
     {
         return $this->synchronized(function():int{$r=$this->checkInner(true);if(!$r->signatureValid||(!$r->valid&&$r->errorCode!=='INSUFFICIENT_CREDITS'))throw new CreditOperationException($r->errorCode??'INVALID_RESPONSE');if(!$r->payload['metered'])throw new CreditOperationException('NOT_METERED_LICENSE');return $r->payload['credit_balance'];});
     }
-    public function consume(mixed $amount,?string $idempotencyKey=null,?string $reason=null):CreditConsumption
+    public function consumeAction(string $action,string $key,int $expectedUnits=1):CreditConsumption{return $this->consume($expectedUnits,$key,null,$action);}
+    public function consume(mixed $amount,?string $idempotencyKey=null,?string $reason=null,?string $action=null):CreditConsumption
     {
         if(!is_int($amount)||$amount<1||$amount>LicensePolicy::MAX_CREDITS)throw new CreditOperationException('INVALID_CREDIT_AMOUNT');
         if(($idempotencyKey!==null&&!preg_match('/^[A-Za-z0-9_.:-]{8,190}$/D',$idempotencyKey))||($reason!==null&&(preg_match_all('/./us',$reason)>190||preg_match('/[\x00-\x1f\x7f]/u',$reason))))throw new CreditOperationException('INVALID_REQUEST');
-        return $this->synchronized(function()use($amount,$idempotencyKey,$reason):CreditConsumption{
+        return $this->synchronized(function()use($amount,$idempotencyKey,$reason,$action):CreditConsumption{
             $token=$this->token();if(!$token)throw new CreditOperationException('NOT_ACTIVATED');$fp=$this->fingerprint();
-            try{$response=$this->request('POST','/api/v1/licenses/consume',['amount'=>$amount,'idempotency_key'=>$idempotencyKey,'reason'=>$reason,'fingerprint'=>$fp,'session_token'=>$this->sessionToken()],['Authorization'=>'Bearer '.$token,'X-Installation-ID'=>$this->installationId]);}catch(RuntimeException){throw new CreditOperationException('NETWORK_ERROR');}
+            try{$response=$this->request('POST','/api/v1/licenses/consume',['amount'=>$amount,'action'=>$action,'idempotency_key'=>$idempotencyKey,'reason'=>$reason,'fingerprint'=>$fp,'session_token'=>$this->sessionToken()],['Authorization'=>'Bearer '.$token,'X-Installation-ID'=>$this->installationId]);}catch(RuntimeException){throw new CreditOperationException('NETWORK_ERROR');}
             if(!$response['ok']&&($response['body']['error']['code']??'')!=='INSUFFICIENT_CREDITS'){$this->remove('signed-state.json');throw new CreditOperationException($response['body']['error']['code']??'HTTP_ERROR');}
             try{$signed=$response['body']['license']??[];$r=$this->verified($signed,'online',$response);}catch(\Throwable){throw new CreditOperationException('SIGNATURE_INVALID');}
             if(!$r->signatureValid||(!$r->valid&&$r->errorCode!=='INSUFFICIENT_CREDITS'))throw new CreditOperationException($r->errorCode??'SIGNATURE_INVALID');if(!$r->payload['metered'])throw new CreditOperationException('NOT_METERED_LICENSE');
-            if(!$response['ok']){$balance=$r->payload['credit_balance'];if(($response['status']??0)!==402||$balance>=$amount||($response['body']['balance']??null)!==$balance)throw new CreditOperationException('SIGNATURE_INVALID');$this->saveState($signed);throw new InsufficientCreditsException($balance);}
-            $c=$r->payload['credit_transaction']??[];$body=$response['body'];
+            if(!$response['ok']){$balance=$r->payload['credit_balance'];if(($response['status']??0)!==402||($action===null&&$balance>=$amount)||($response['body']['balance']??null)!==$balance)throw new CreditOperationException('SIGNATURE_INVALID');$this->saveState($signed);throw new InsufficientCreditsException($balance);}
+            $c=$r->payload['credit_transaction']??[];$body=$response['body'];if($action!==null){if(!is_int($c['amount']??null)||$c['amount']>=0)throw new CreditOperationException('SIGNATURE_INVALID');$amount=-$c['amount'];}
             if(!is_array($c)||($c['type']??'')!=='consume'||!is_string($c['id']??null)||!preg_match('/^ctx_[A-Za-z0-9_-]{1,36}$/D',$c['id'])||($c['amount']??null)!==-$amount||!LicensePolicy::integer($c['balance_after']??null)||!LicensePolicy::integer($c['total_allocated_after']??null)||($c['idempotency_hash']??null)!==($idempotencyKey===null?null:hash('sha256',$idempotencyKey))||!is_bool($c['replayed']??null)||($body['transaction_id']??null)!==$c['id']||($body['consumed']??null)!==$amount||($body['balance']??null)!==$c['balance_after']||($body['replayed']??null)!==$c['replayed'])throw new CreditOperationException('SIGNATURE_INVALID');
             $this->saveState($signed);return new CreditConsumption($c['id'],$amount,$c['balance_after'],$c['replayed']);
         });
