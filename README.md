@@ -153,7 +153,7 @@ See LICENSE for existing license-information boundaries and CHANGELOG.md for ver
 
 ## Web-request lifecycle (current source addition)
 
-The constructor accepts `releaseSessionOnDestruct: false` for a trusted web app that deliberately keeps a signed seat across PHP requests. Default remains true. Keep the same private state folder, send authenticated heartbeats at the signed interval, explicitly checkin on close, and require `check()` before every protected operation. Expiry still stops access if the browser disappears. This optional source addition is not yet in the published 2.2.0 package; no signature checks are bypassed.
+The constructor accepts `releaseSessionOnDestruct: false` for a trusted web app that deliberately keeps a signed seat across PHP requests. Default remains true. Keep the same private state folder, send authenticated heartbeats at the signed interval, explicitly checkin on close, and require `check()` before every protected operation. Expiry still stops access if the browser disappears. This option is included in the published 2.2.0 package; no signature checks are bypassed.
 
 
 ## Credit codes and store top-ups
